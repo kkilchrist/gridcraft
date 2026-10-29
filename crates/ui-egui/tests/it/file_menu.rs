@@ -793,6 +793,24 @@ fn quitting_saves_an_untitled_workbook_through_a_sheet_and_goes_on() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Save in the Save Changes question while another sheet is still open (File › Open, say): the
+/// sheet can't be asked for, so the question stays open instead of closing unanswered.
+#[test]
+fn save_changes_stays_open_while_another_sheet_is_up() {
+    let (mut h, asked) = sheet_harness();
+    h.state_mut().run("cell.set", serde_json::json!({"cell": "A1", "input": "42"})).unwrap();
+    h.state_mut().open_dialog("open", serde_json::json!({}));
+    h.run_steps(2);
+    assert_eq!(asked.lock().unwrap().len(), 1);
+    request_window_close(&mut h);
+    assert_eq!(h.state().dialog.as_ref().map(|d| d.name()), Some("saveChanges"));
+    let sent = click_commands(&mut h, "Save");
+    assert!(!sent.contains(&egui::ViewportCommand::Close), "{sent:?}");
+    assert_eq!(asked.lock().unwrap().len(), 1, "no second sheet while the first is up");
+    assert_eq!(h.state().dialog.as_ref().map(|d| d.name()), Some("saveChanges"), "the question stays open");
+    assert_eq!(h.state().session.documents().len(), 1);
+}
+
 /// File › Save As › Browse… with a sheet: the Backstage closes while the sheet is up, as it does
 /// once a blocking picker has saved, so the sheet sits on the workbook rather than the Backstage.
 #[test]

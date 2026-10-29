@@ -72,8 +72,9 @@ impl SheetApp {
                 // later frame, so closing (and quitting on) waits for that answer.
                 if self.services.pick_async.is_some() && self.session.active().is_some_and(|d| d.path.is_none()) {
                     let suggested = self.session.active().map(|d| d.display_title()).unwrap_or_else(|| "Book1".into());
-                    self.pick_path(crate::PathPick::Save(suggested), super::AfterPick::SaveAsAndClose { quitting });
-                    return true;
+                    // Another sheet still open refuses the request: the question stays, to be
+                    // answered once that sheet is.
+                    return self.pick_path(crate::PathPick::Save(suggested), super::AfterPick::SaveAsAndClose { quitting }) != Some(false);
                 }
                 self.run_or_alert("file.save", json!({}));
                 if self.session.active().is_some_and(|x| !x.is_dirty()) {
