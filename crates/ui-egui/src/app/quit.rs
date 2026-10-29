@@ -68,6 +68,13 @@ impl SheetApp {
                 if !self.commit_edit(0, 0, false, false) {
                     return false;
                 }
+                // A workbook without a file asks where to save it. A sheet (macOS) answers on a
+                // later frame, so closing (and quitting on) waits for that answer.
+                if self.services.pick_async.is_some() && self.session.active().is_some_and(|d| d.path.is_none()) {
+                    let suggested = self.session.active().map(|d| d.display_title()).unwrap_or_else(|| "Book1".into());
+                    self.pick_path(crate::PathPick::Save(suggested), super::AfterPick::SaveAsAndClose { quitting });
+                    return true;
+                }
                 self.run_or_alert("file.save", json!({}));
                 if self.session.active().is_some_and(|x| !x.is_dirty()) {
                     self.run_or_alert("file.close", json!({"force": true, "document": true}));
